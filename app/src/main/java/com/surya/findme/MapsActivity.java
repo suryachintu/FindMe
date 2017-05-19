@@ -26,6 +26,7 @@ import com.google.android.gms.common.GooglePlayServicesRepairableException;
 import com.google.android.gms.common.api.Status;
 import com.google.android.gms.location.places.Place;
 import com.google.android.gms.location.places.ui.PlaceAutocomplete;
+import com.google.android.gms.maps.CameraUpdate;
 import com.google.android.gms.maps.CameraUpdateFactory;
 import com.google.android.gms.maps.GoogleMap;
 import com.google.android.gms.maps.OnMapReadyCallback;
@@ -47,6 +48,10 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
     private static final int PLACE_AUTOCOMPLETE_REQUEST_CODE = 1;
     private static final String TAG = MapsActivity.class.getSimpleName();
     private static final int MY_PERMISSIONS_REQUEST = 5;
+    public static final String EXTRA_LATLNG = "latlng";
+    public static final String EXTRA_PLACE = "place";
+    public static final String EXTRA_DISTANCE = "distance";
+    public static final String EXTRA_RATING = "rating";
     private GoogleMap mMap;
     @BindView(R.id.bottom_card)
     CardView bottom_card;
@@ -58,6 +63,7 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
     TextView mPlaceDistance;
     @BindView(R.id.place_image)
     ImageView mPlaceImage;
+    private LatLng currentLatlng;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -84,6 +90,33 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
         mapFragment.getMapAsync(this);
     }
 
+    @Override
+    public boolean onCreateOptionsMenu(Menu menu) {
+        MenuInflater inflater = getMenuInflater();
+        inflater.inflate(R.menu.menu_main, menu);
+        return true;
+    }
+
+    @Override
+    public boolean onOptionsItemSelected(MenuItem item) {
+        // Handle action bar item clicks here. The action bar will
+        // automatically handle clicks on the Home/Up button, so long
+        // as you specify a parent activity in AndroidManifest.xml.
+        int id = item.getItemId();
+        if (id == R.id.action_search){
+
+            try {
+                Intent intent = new PlaceAutocomplete.IntentBuilder(PlaceAutocomplete.MODE_OVERLAY).build(this);
+                startActivityForResult(intent,PLACE_AUTOCOMPLETE_REQUEST_CODE);
+
+            } catch (GooglePlayServicesRepairableException | GooglePlayServicesNotAvailableException e) {
+                e.printStackTrace();
+            }
+
+            return true;
+        }
+        return super.onOptionsItemSelected(item);
+    }
 
     /**
      * Manipulates the map once available.
@@ -154,6 +187,8 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
 
     private void showBottomCard(LatLng latLng) {
 
+        currentLatlng = latLng;
+
         bottom_card.setVisibility(View.VISIBLE);
 
         Animation slide_up = AnimationUtils.loadAnimation(getApplicationContext(),
@@ -161,39 +196,32 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
 
         // Start animation
         bottom_card.startAnimation(slide_up);
-        
 
     }
 
-
-    @Override
-    public boolean onCreateOptionsMenu(Menu menu) {
-        MenuInflater inflater = getMenuInflater();
-        inflater.inflate(R.menu.menu_main, menu);
-        return true;
+    @OnClick(R.id.route_button)
+    public void navigate() {
+        if (currentLatlng!= null)
+            Utils.openMaps(this,currentLatlng);
+        else
+            Toast.makeText(this, "Error in opening maps", Toast.LENGTH_SHORT).show();
     }
 
-    @Override
-    public boolean onOptionsItemSelected(MenuItem item) {
-        // Handle action bar item clicks here. The action bar will
-        // automatically handle clicks on the Home/Up button, so long
-        // as you specify a parent activity in AndroidManifest.xml.
-        int id = item.getItemId();
-        if (id == R.id.action_search){
+    @OnClick(R.id.bottom_card)
+    public void openDetails(){
 
-            try {
-                Intent intent = new PlaceAutocomplete.IntentBuilder(PlaceAutocomplete.MODE_OVERLAY).build(this);
-                startActivityForResult(intent,PLACE_AUTOCOMPLETE_REQUEST_CODE);
+        if (currentLatlng != null) {
 
-            } catch (GooglePlayServicesRepairableException | GooglePlayServicesNotAvailableException e) {
-                e.printStackTrace();
-            }
+            Intent intent = new Intent(MapsActivity.this, Detail.class);
+            intent.putExtra(EXTRA_LATLNG,currentLatlng.latitude + "," + currentLatlng.longitude);
+            intent.putExtra(EXTRA_RATING,mPlaceRating.getText().toString());
+            intent.putExtra(EXTRA_DISTANCE,mPlaceDistance.getText().toString());
+            intent.putExtra(EXTRA_PLACE,mPlaceName.getText().toString());
+            startActivity(intent);
 
-
-            return true;
         }
-        return super.onOptionsItemSelected(item);
     }
+
 
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
@@ -201,6 +229,14 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
             if (resultCode == RESULT_OK) {
                 Place place = PlaceAutocomplete.getPlace(this, data);
                 Log.e(TAG, "Place: " + place.getName());
+
+                if (mMap != null){
+
+                    mMap.addMarker(new MarkerOptions().position(place.getLatLng()).title(place.getName().toString()));
+                    mMap.moveCamera(CameraUpdateFactory.newLatLng(place.getLatLng()));
+
+                }
+
             } else if (resultCode == PlaceAutocomplete.RESULT_ERROR) {
                 Status status = PlaceAutocomplete.getStatus(this, data);
                 // TODO: Handle the error.
@@ -221,18 +257,5 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
         }
     }
 
-    @OnClick(R.id.route_button)
-    public void navigate(){
-        Toast.makeText(this, "Clicked", Toast.LENGTH_SHORT).show();
-    }
-
-    @OnClick(R.id.bottom_card)
-    public void openDetails(){
-        Toast.makeText(this, "Clicked", Toast.LENGTH_SHORT).show();
-
-        Intent intent = new Intent(MapsActivity.this,Detail.class);
-        startActivity(intent);
-
-    }
 
 }

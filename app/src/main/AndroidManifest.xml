@@ -48,6 +48,15 @@
                 android:name="android.support.PARENT_ACTIVITY"
                 android:value="com.surya.findme.MapsActivity" />
         </activity>
+        <activity
+            android:name=".ComplianTicket"
+            android:label="@string/title_activity_complian_ticket"
+            android:parentActivityName=".MapsActivity"
+            android:theme="@style/AppTheme.NoActionBar">
+            <meta-data
+                android:name="android.support.PARENT_ACTIVITY"
+                android:value="com.surya.findme.MapsActivity" />
+        </activity>
     </application>
 
 </manifest>
